@@ -3,6 +3,8 @@
 #include<sys/socket.h>
 #include<arpa/inet.h>
 #include <unistd.h>
+#include <stdlib.h>
+
 #define SERVER_PORT 50001
 #define SERVER_PORT_EXCHANGE 50002
 #define SERVER_REPLY_SIZE 20
@@ -15,6 +17,11 @@
 #define BACKLOG_LENGTH 1000
 #define CONTENT "CONTENT "
 
+char *criteres[5]={"film","code","texte","musique","classeur"};
+
+int get_random(int min,int max){
+    return  rand()%(max-min) +min;
+}
 
 int main(int argc , char *argv[])
 {
@@ -47,7 +54,7 @@ int main(int argc , char *argv[])
 
     puts("Connected\n");
 //authentification from server
-    sprintf(recu, "%d", SERVER_PORT);
+    sprintf(recu, "%d", get_random(50001,99999));
     strncpy(toSend,SLAVE_COMMANDE,strlen(SLAVE_COMMANDE));
     strcat(toSend,recu);
     if( send(sock , toSend , strlen(toSend) , 0) < 0)
@@ -67,6 +74,9 @@ int main(int argc , char *argv[])
         close(sock);
         return 1;
     }
+    //generations des files ids
+// to dO
+//
     close(sock);
 ///////////////////////exchanging part
 //Bind
