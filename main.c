@@ -6,7 +6,6 @@
 #include <stdlib.h>
 
 #define SERVER_PORT 50001
-#define SERVER_PORT_EXCHANGE 50002
 #define SERVER_REPLY_SIZE 20
 #define SLAVE_COMMANDE "SLAVE "
 #define NEED_COMMANDE "NEED "
@@ -17,7 +16,6 @@
 #define BACKLOG_LENGTH 1000
 #define CONTENT "CONTENT "
 
-char *criteres[5]={"film","code","texte","musique","classeur"};
 
 int get_random(int min,int max){
     return  rand()%(max-min) +min;
@@ -40,12 +38,13 @@ int main(int argc , char *argv[])
     server.sin_addr.s_addr = inet_addr("127.0.0.1");
     server.sin_family = AF_INET;
     server.sin_port = htons(SERVER_PORT);
-
+    //generer un numero de port aleatoire
+    int port_exchange=get_random(50002,60000);
     exchange.sin_addr.s_addr = inet_addr("127.0.0.1");
     exchange.sin_family = AF_INET;
-    exchange.sin_port = htons(SERVER_PORT_EXCHANGE);
+    exchange.sin_port = htons(port_exchange);
 
-//Connect to remote server
+//Connection au server master
     if (connect(sock , (struct sockaddr *)&server , sizeof(server)) < 0)
     {
         perror("connect failed. Error");
@@ -54,14 +53,16 @@ int main(int argc , char *argv[])
 
     puts("Connected\n");
 //authentification from server
-    sprintf(recu, "%d", get_random(50001,99999));
+    sprintf(recu, "%d", port_exchange);
     strncpy(toSend,SLAVE_COMMANDE,strlen(SLAVE_COMMANDE));
     strcat(toSend,recu);
+    puts(toSend);
     if( send(sock , toSend , strlen(toSend) , 0) < 0)
     {
         puts("Authentification failed");
         return 1;
     }
+    puts("identification");
     memset(toSend, 0, sizeof(toSend));
     memset(recu, 0, sizeof(recu));
 //Receive a reply from the server
@@ -70,6 +71,7 @@ int main(int argc , char *argv[])
         puts("Authentification failed");
     }
     puts(server_reply);
+    //si authentification refusee, arreter le slave
     if(strstr(server_reply,BAD)) {
         close(sock);
         return 1;
@@ -89,7 +91,7 @@ int main(int argc , char *argv[])
     puts("bind done");
 
 //Listen
-    listen(sock_exchange, BACKLOG_LENGTH);
+    listen(sock_exchange, BACKLOG_LENGTH);//se mettre en ecoute des demandes de fichier depuis le master
     while(1) {
         //Accept and incoming connection
         puts("Waiting for incoming connections...");
@@ -110,13 +112,15 @@ int main(int argc , char *argv[])
             while ((read_size = recv(client_socket, server_reply, SERVER_REPLY_SIZE, 0)) > 0) {
                 puts(server_reply);
                 if (strstr(server_reply, NEED_COMMANDE)) {
-                    char criteres[SEND_SIZE - 5];
-                    strncpy(recu, SEND_SIZE + 5, SEND_SIZE - 5);
+                    //recuperation de l'id
+                    strncpy(recu, server_reply, SEND_SIZE - 5);
                     recu[SERVER_REPLY_SIZE - 5] = '\0';
                     puts(recu);
+                    //simulation dun contenu de fichier
                     char * file="contenu du fichier";
                     //Send the message back to client
                     char file_size[20];
+                    //envoie de la reponse au master
                     sprintf(file_size, "%d", 123456789);
                     strncpy(toSend,CONTENT,strlen(CONTENT));
                     strncpy(toSend,file_size,strlen(file_size));
